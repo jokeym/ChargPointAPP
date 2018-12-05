@@ -18,13 +18,12 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    void AddChecksum(char *p);
+
 private slots:
     void Read_Data();
     void on_pushButton_Open_clicked();
-
-
     void on_pushButton_Clean_clicked();
-
     void on_pushButton_Send_clicked();
 
 private:
