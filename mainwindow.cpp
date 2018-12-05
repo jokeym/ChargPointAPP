@@ -18,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
             serial.close();
         }
     }
-
+    /*查找串口OK*/
     qDebug() << tr("界面设定成功！");
 
 }
