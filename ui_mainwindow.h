@@ -14,14 +14,16 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QComboBox>
-#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QDateTimeEdit>
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QRadioButton>
 #include <QtWidgets/QSpacerItem>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QTextEdit>
@@ -35,7 +37,6 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralWidget;
-    QGridLayout *gridLayout;
     QGroupBox *groupBox;
     QHBoxLayout *horizontalLayout;
     QGroupBox *groupBox1;
@@ -50,6 +51,36 @@ public:
     QVBoxLayout *verticalLayout_2;
     QTextEdit *textEdit;
     QLineEdit *lineEdit;
+    QWidget *layoutWidget;
+    QVBoxLayout *verticalLayout_4;
+    QGroupBox *groupBox3;
+    QVBoxLayout *verticalLayout_3;
+    QHBoxLayout *horizontalLayout_9;
+    QLabel *label_6;
+    QDateTimeEdit *Now_dateTimeEdit;
+    QHBoxLayout *horizontalLayout_6;
+    QLabel *label_3;
+    QDateTimeEdit *Set_dateTimeEdit;
+    QHBoxLayout *horizontalLayout_8;
+    QLabel *label_5;
+    QLineEdit *lineEdit_ResidueCnt;
+    QHBoxLayout *horizontalLayout_2;
+    QLabel *label_4;
+    QLineEdit *lineEdit_NowPower;
+    QHBoxLayout *horizontalLayout_3;
+    QLabel *label;
+    QLineEdit *lineEdit_MinPower;
+    QHBoxLayout *horizontalLayout_4;
+    QLabel *label_2;
+    QLineEdit *lineEdit_MaxPower;
+    QHBoxLayout *horizontalLayout_5;
+    QRadioButton *radioButton_RestartFlag;
+    QLineEdit *lineEdit_ResetTime;
+    QSpacerItem *verticalSpacer_2;
+    QHBoxLayout *horizontalLayout_7;
+    QPushButton *pushButton_Connect;
+    QPushButton *pushButton_GetCtrl;
+    QPushButton *pushButton_SetCtrl;
     QMenuBar *menuBar;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
@@ -58,15 +89,12 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName(QStringLiteral("MainWindow"));
-        MainWindow->resize(420, 379);
+        MainWindow->resize(1073, 741);
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
-        gridLayout = new QGridLayout(centralWidget);
-        gridLayout->setSpacing(6);
-        gridLayout->setContentsMargins(11, 11, 11, 11);
-        gridLayout->setObjectName(QStringLiteral("gridLayout"));
         groupBox = new QGroupBox(centralWidget);
         groupBox->setObjectName(QStringLiteral("groupBox"));
+        groupBox->setGeometry(QRect(11, 11, 811, 331));
         horizontalLayout = new QHBoxLayout(groupBox);
         horizontalLayout->setSpacing(6);
         horizontalLayout->setContentsMargins(11, 11, 11, 11);
@@ -127,13 +155,165 @@ public:
 
         horizontalLayout->addWidget(groupBox2);
 
+        layoutWidget = new QWidget(centralWidget);
+        layoutWidget->setObjectName(QStringLiteral("layoutWidget"));
+        layoutWidget->setGeometry(QRect(370, 380, 341, 281));
+        verticalLayout_4 = new QVBoxLayout(layoutWidget);
+        verticalLayout_4->setSpacing(6);
+        verticalLayout_4->setContentsMargins(11, 11, 11, 11);
+        verticalLayout_4->setObjectName(QStringLiteral("verticalLayout_4"));
+        verticalLayout_4->setContentsMargins(0, 0, 0, 0);
+        groupBox3 = new QGroupBox(layoutWidget);
+        groupBox3->setObjectName(QStringLiteral("groupBox3"));
+        verticalLayout_3 = new QVBoxLayout(groupBox3);
+        verticalLayout_3->setSpacing(6);
+        verticalLayout_3->setContentsMargins(11, 11, 11, 11);
+        verticalLayout_3->setObjectName(QStringLiteral("verticalLayout_3"));
+        horizontalLayout_9 = new QHBoxLayout();
+        horizontalLayout_9->setSpacing(6);
+        horizontalLayout_9->setObjectName(QStringLiteral("horizontalLayout_9"));
+        label_6 = new QLabel(groupBox3);
+        label_6->setObjectName(QStringLiteral("label_6"));
 
-        gridLayout->addWidget(groupBox, 0, 0, 1, 1);
+        horizontalLayout_9->addWidget(label_6);
+
+        Now_dateTimeEdit = new QDateTimeEdit(groupBox3);
+        Now_dateTimeEdit->setObjectName(QStringLiteral("Now_dateTimeEdit"));
+
+        horizontalLayout_9->addWidget(Now_dateTimeEdit);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_9);
+
+        horizontalLayout_6 = new QHBoxLayout();
+        horizontalLayout_6->setSpacing(6);
+        horizontalLayout_6->setObjectName(QStringLiteral("horizontalLayout_6"));
+        label_3 = new QLabel(groupBox3);
+        label_3->setObjectName(QStringLiteral("label_3"));
+
+        horizontalLayout_6->addWidget(label_3);
+
+        Set_dateTimeEdit = new QDateTimeEdit(groupBox3);
+        Set_dateTimeEdit->setObjectName(QStringLiteral("Set_dateTimeEdit"));
+        Set_dateTimeEdit->setDateTime(QDateTime(QDate(2018, 12, 7), QTime(18, 30, 0)));
+
+        horizontalLayout_6->addWidget(Set_dateTimeEdit);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_6);
+
+        horizontalLayout_8 = new QHBoxLayout();
+        horizontalLayout_8->setSpacing(6);
+        horizontalLayout_8->setObjectName(QStringLiteral("horizontalLayout_8"));
+        label_5 = new QLabel(groupBox3);
+        label_5->setObjectName(QStringLiteral("label_5"));
+
+        horizontalLayout_8->addWidget(label_5);
+
+        lineEdit_ResidueCnt = new QLineEdit(groupBox3);
+        lineEdit_ResidueCnt->setObjectName(QStringLiteral("lineEdit_ResidueCnt"));
+
+        horizontalLayout_8->addWidget(lineEdit_ResidueCnt);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_8);
+
+        horizontalLayout_2 = new QHBoxLayout();
+        horizontalLayout_2->setSpacing(6);
+        horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
+        label_4 = new QLabel(groupBox3);
+        label_4->setObjectName(QStringLiteral("label_4"));
+
+        horizontalLayout_2->addWidget(label_4);
+
+        lineEdit_NowPower = new QLineEdit(groupBox3);
+        lineEdit_NowPower->setObjectName(QStringLiteral("lineEdit_NowPower"));
+
+        horizontalLayout_2->addWidget(lineEdit_NowPower);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_2);
+
+        horizontalLayout_3 = new QHBoxLayout();
+        horizontalLayout_3->setSpacing(6);
+        horizontalLayout_3->setObjectName(QStringLiteral("horizontalLayout_3"));
+        label = new QLabel(groupBox3);
+        label->setObjectName(QStringLiteral("label"));
+
+        horizontalLayout_3->addWidget(label);
+
+        lineEdit_MinPower = new QLineEdit(groupBox3);
+        lineEdit_MinPower->setObjectName(QStringLiteral("lineEdit_MinPower"));
+
+        horizontalLayout_3->addWidget(lineEdit_MinPower);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_3);
+
+        horizontalLayout_4 = new QHBoxLayout();
+        horizontalLayout_4->setSpacing(6);
+        horizontalLayout_4->setObjectName(QStringLiteral("horizontalLayout_4"));
+        label_2 = new QLabel(groupBox3);
+        label_2->setObjectName(QStringLiteral("label_2"));
+
+        horizontalLayout_4->addWidget(label_2);
+
+        lineEdit_MaxPower = new QLineEdit(groupBox3);
+        lineEdit_MaxPower->setObjectName(QStringLiteral("lineEdit_MaxPower"));
+
+        horizontalLayout_4->addWidget(lineEdit_MaxPower);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_4);
+
+        horizontalLayout_5 = new QHBoxLayout();
+        horizontalLayout_5->setSpacing(6);
+        horizontalLayout_5->setObjectName(QStringLiteral("horizontalLayout_5"));
+        radioButton_RestartFlag = new QRadioButton(groupBox3);
+        radioButton_RestartFlag->setObjectName(QStringLiteral("radioButton_RestartFlag"));
+
+        horizontalLayout_5->addWidget(radioButton_RestartFlag);
+
+        lineEdit_ResetTime = new QLineEdit(groupBox3);
+        lineEdit_ResetTime->setObjectName(QStringLiteral("lineEdit_ResetTime"));
+
+        horizontalLayout_5->addWidget(lineEdit_ResetTime);
+
+
+        verticalLayout_3->addLayout(horizontalLayout_5);
+
+        verticalSpacer_2 = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
+
+        verticalLayout_3->addItem(verticalSpacer_2);
+
+
+        verticalLayout_4->addWidget(groupBox3);
+
+        horizontalLayout_7 = new QHBoxLayout();
+        horizontalLayout_7->setSpacing(6);
+        horizontalLayout_7->setObjectName(QStringLiteral("horizontalLayout_7"));
+        pushButton_Connect = new QPushButton(layoutWidget);
+        pushButton_Connect->setObjectName(QStringLiteral("pushButton_Connect"));
+
+        horizontalLayout_7->addWidget(pushButton_Connect);
+
+        pushButton_GetCtrl = new QPushButton(layoutWidget);
+        pushButton_GetCtrl->setObjectName(QStringLiteral("pushButton_GetCtrl"));
+
+        horizontalLayout_7->addWidget(pushButton_GetCtrl);
+
+        pushButton_SetCtrl = new QPushButton(layoutWidget);
+        pushButton_SetCtrl->setObjectName(QStringLiteral("pushButton_SetCtrl"));
+
+        horizontalLayout_7->addWidget(pushButton_SetCtrl);
+
+
+        verticalLayout_4->addLayout(horizontalLayout_7);
 
         MainWindow->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(MainWindow);
         menuBar->setObjectName(QStringLiteral("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 420, 23));
+        menuBar->setGeometry(QRect(0, 0, 1073, 26));
         MainWindow->setMenuBar(menuBar);
         mainToolBar = new QToolBar(MainWindow);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -153,6 +333,19 @@ public:
         pushButton_Open->setText(QApplication::translate("MainWindow", "\346\211\223\345\274\200", nullptr));
         pushButton_Clean->setText(QApplication::translate("MainWindow", "\346\270\205\351\231\244", nullptr));
         pushButton_Send->setText(QApplication::translate("MainWindow", "\345\217\221\351\200\201", nullptr));
+        lineEdit->setText(QApplication::translate("MainWindow", "$ICEGPS,SETCTRL,6,8,4,2,1544367346,1,6*48", nullptr));
+        label_6->setText(QApplication::translate("MainWindow", "\347\216\260\345\234\250RTC\346\227\266\351\227\264", nullptr));
+        Now_dateTimeEdit->setDisplayFormat(QApplication::translate("MainWindow", "yyyy-MM-dd HH:mm:ss", nullptr));
+        label_3->setText(QApplication::translate("MainWindow", "\350\256\276\347\275\256RTC\346\227\266\351\227\264", nullptr));
+        Set_dateTimeEdit->setDisplayFormat(QApplication::translate("MainWindow", "yyyy-MM-dd HH:mm:ss", nullptr));
+        label_5->setText(QApplication::translate("MainWindow", "\345\211\251\344\275\231\346\254\241\346\225\260", nullptr));
+        label_4->setText(QApplication::translate("MainWindow", "\345\256\236\351\231\205\345\212\237\347\216\207     ", nullptr));
+        label->setText(QApplication::translate("MainWindow", "\346\234\200\344\275\216\345\212\237\347\216\207     ", nullptr));
+        label_2->setText(QApplication::translate("MainWindow", "\346\234\200\351\253\230\345\212\237\347\216\207    ", nullptr));
+        radioButton_RestartFlag->setText(QApplication::translate("MainWindow", "\351\207\215\345\220\257\346\227\266\351\227\264 ", nullptr));
+        pushButton_Connect->setText(QApplication::translate("MainWindow", "\350\277\236\346\216\245", nullptr));
+        pushButton_GetCtrl->setText(QApplication::translate("MainWindow", "\350\216\267\345\217\226", nullptr));
+        pushButton_SetCtrl->setText(QApplication::translate("MainWindow", "\345\206\231\345\205\245", nullptr));
     } // retranslateUi
 
 };
