@@ -7,7 +7,7 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QTimer>
 
-#define CMD_HEAD "$ICEGPS"
+#define CMD_HEAD "$CHARGE"
 
 typedef enum _CMD_TYPE_t {
     CMD_NULL,      //空
@@ -17,11 +17,12 @@ typedef enum _CMD_TYPE_t {
     CMD_CONNECT,   //连接
     CMD_GETCTRL,   //获取信息
     CMD_SETCTRL,   //设置信息
-    CMD_DEVINFO,   //设备信息
+    CMD_CTRLINFO,   //设备信息
 } CMD_TYPE_t;
 
 typedef struct _RecvUart_t
 {
+    qint8 UartOpenFlag ;
     QString RecvStr;
 
     qint16 NowPower,MinPower,MaxPower;
@@ -57,11 +58,7 @@ private slots:
     void on_pushButton_Send_clicked();
     void DecodeMsg();
 
-
-    void on_pushButton_Connect_clicked();
-
     void on_pushButton_GetCtrl_clicked();
-
     void on_pushButton_SetCtrl_clicked();
 
 private:
