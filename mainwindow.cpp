@@ -33,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
     decodetimer = new QTimer(this);
     connect(decodetimer, SIGNAL(timeout()), this, SLOT(DecodeMsg()));
     decodetimer->stop();
+//    decodetimer->start(100);
 
 }
 
@@ -136,6 +137,9 @@ CMD_TYPE_t MainWindow::GetCMDType(QString cmdstr){
 
     if(cmdstr=="CTRLINFO")
         cmd = CMD_CTRLINFO;
+    if(cmdstr=="OK")
+        cmd = CMD_OK;
+    qDebug()<<"cmd:"<<cmd;
 
     return cmd;
 }
@@ -145,7 +149,7 @@ void MainWindow::on_pushButton_Send_clicked()
     if(RecvUart.UartOpenFlag){
         RecvUart.RecvStr.clear();
         decodetimer->start(100);
-        serial->write((ui->lineEdit->text()).toLatin1());
+        serial->write((ui->lineEdit->text()+"\n").toLatin1());
     }
     else{
         ui->textEdit->append("串口未打开");
@@ -163,41 +167,48 @@ void MainWindow::DecodeMsg(){
         RecvUart.RecvStr.clear();
         decodetimer->stop();
 
-        QStringList list = str.split(QRegExp("[,*]"));
-//        for(quint8 i = 0 ; i<list.size();i++)
-//            qDebug()<<list.at(i);
+        QStringList listcmd = str.split(QRegExp("[\r\n]"),QString::SkipEmptyParts);
 
-        if(list.at(0)!=CMD_HEAD){
-            qDebug()<<"数据出错";
-        }
-        cmd = GetCMDType(list.at(1));
-        switch(cmd){
-            case CMD_CTRLINFO:
-            qDebug()<<"CMD_SETCTRL";
-//            RecvUart.MinPower = list.at(2).toInt(&ok,10);
-//            RecvUart.MaxPower = list.at(3).toInt(&ok,10);
-//            RecvUart.NowPower = list.at(4).toInt(&ok,10);
-//            RecvUart.ResidueCnt =list.at(5).toInt(&ok,10);
-//            RecvUart.NowRTCTime =list.at(6).toInt(&ok,10);
-//            RecvUart.RestartFlag =list.at(7).toInt(&ok,10);
-//            RecvUart.RestartTime =list.at(8).toInt(&ok,10);
+        for(quint8 i = 0 ; i<listcmd.size();i++){
+            qDebug()<<"收到的指令："<<listcmd.at(i);
+            QStringList list = listcmd.at(i).split(QRegExp("[,*]"));
 
-            ui->lineEdit_MinPower->setText(list.at(2));
-            ui->lineEdit_MaxPower->setText(list.at(3));
-            ui->lineEdit_NowPower->setText(list.at(4));
-            ui->lineEdit_ResidueCnt->setText(list.at(5));
+            for(quint8 i = 0 ; i<list.size();i++)
+                qDebug()<<list.at(i);
 
-            QDateTime dateTime;
-            uint32_t seconds = list.at(6).toInt(&ok,10);
-            dateTime = QDateTime::fromTime_t(seconds);
-            ui->Now_dateTimeEdit->setDateTime(dateTime);
-
-            if(list.at(7).toInt(&ok,10)){
-                ui->radioButton_RestartFlag->setChecked(true);
-                ui->lineEdit_ResetTime->setText(list.at(8));
-
+            if(list.at(0)!=CMD_HEAD){
+                qDebug()<<"数据出错";
             }
-            break;
+
+            cmd = GetCMDType(list.at(1));
+
+            switch(cmd){
+            case CMD_CTRLINFO:
+                qDebug()<<"CMD_SETCTRL";
+                float value =  list.at(2).toFloat()*220;
+                ui->lineEdit_MinPower->setText(QString("%1").arg(value));
+
+                value =  list.at(3).toFloat()*220;
+                ui->lineEdit_MaxPower->setText(QString("%1").arg(value));
+
+                ui->lineEdit_NowPower->setText(list.at(4));
+                ui->lineEdit_ResidueCnt->setText(list.at(5));
+
+                QDateTime dateTime;
+                uint32_t seconds = list.at(6).toInt(&ok,10);
+                dateTime = QDateTime::fromTime_t(seconds);
+                ui->Now_dateTimeEdit->setDateTime(dateTime);
+
+                if(list.at(7).toInt(&ok,10)){
+                    ui->radioButton_RestartFlag->setChecked(true);
+                    ui->lineEdit_ResetTime->setText(list.at(8));
+                }
+                else{
+                    ui->radioButton_RestartFlag->setChecked(false);
+                    ui->lineEdit_ResetTime->setEnabled(false);
+                }
+                break;
+            }
         }
 
 
@@ -234,21 +245,21 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
         break;
 
     case CMD_SETCTRL:
-        RecvUart.MinPower = ui->lineEdit_MinPower->text().toInt(&ok,10);
-        RecvUart.MaxPower = ui->lineEdit_MaxPower->text().toInt(&ok,10);
+        RecvUart.MinCurrent = ui->lineEdit_MinPower->text().toFloat()/220.00;
+        RecvUart.MaxCurrent = ui->lineEdit_MaxPower->text().toFloat()/220.00;
 
         RecvUart.SetRTCTime =ui->Set_dateTimeEdit->dateTime().toTime_t();   //将当前时间转为时间戳
 
         if(ui->radioButton_RestartFlag->isChecked()){
             RecvUart.RestartFlag =1;
-            RecvUart.RestartTime =ui->lineEdit_MinPower->text().toInt(&ok,10);
+            RecvUart.RestartTime =ui->lineEdit_ResetTime->text().toInt(&ok,10);
         }
         else {
             RecvUart.RestartFlag =0;
             RecvUart.RestartTime =0;
         }
 
-        sprintf(p,"SETCTRL,%d,%d,%d,%d,%d",RecvUart.MinPower,RecvUart.MaxPower,\
+        sprintf(p,"SETCTRL,%.2f,%.2f,%d,%d,%d",RecvUart.MinCurrent,RecvUart.MaxCurrent,\
                 RecvUart.SetRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
 
 
@@ -297,6 +308,14 @@ void MainWindow::on_pushButton_SetCtrl_clicked()
     ui->lineEdit->setText(EncodMsg(CMD_SETCTRL));
     on_pushButton_Send_clicked();
 
-//    ui->lineEdit->setText(EncodMsg(CMD_CTRLINFO));
-//    on_pushButton_Send_clicked();
+    //    ui->lineEdit->setText(EncodMsg(CMD_CTRLINFO));
+    //    on_pushButton_Send_clicked();
+}
+
+void MainWindow::on_radioButton_RestartFlag_clicked()
+{
+    if(ui->radioButton_RestartFlag->isChecked()){
+        ui->lineEdit_ResetTime->setEnabled(true);
+    }
+
 }

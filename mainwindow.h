@@ -10,7 +10,7 @@
 #define CMD_HEAD "$CHARGE"
 
 typedef enum _CMD_TYPE_t {
-    CMD_NULL,      //空
+    CMD_NULL=0,      //空
     CMD_UNKNOWN,   //未知指令
     CMD_OK,        //成功
     CMD_ERROR,     //错误
@@ -29,6 +29,9 @@ typedef struct _RecvUart_t
     qint32 NowRTCTime,SetRTCTime;
     qint32 RestartFlag,RestartTime;
     qint16 ResidueCnt;
+
+    float MaxCurrent,MinCurrent;
+
 
 }RecvUart_t;
 
@@ -60,6 +63,8 @@ private slots:
 
     void on_pushButton_GetCtrl_clicked();
     void on_pushButton_SetCtrl_clicked();
+
+    void on_radioButton_RestartFlag_clicked();
 
 private:
     Ui::MainWindow *ui;
