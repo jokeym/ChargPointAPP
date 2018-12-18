@@ -30,6 +30,9 @@ typedef struct _RecvUart_t
     qint32 RestartFlag,RestartTime;
     qint16 ResidueCnt;
 
+    qint16 year,month,day;
+    qint16 hour,min,sec;
+
     float MaxCurrent,MinCurrent;
 
 
@@ -66,10 +69,14 @@ private slots:
 
     void on_radioButton_RestartFlag_clicked();
 
+    void updateDateSlots();
+
 private:
     Ui::MainWindow *ui;
     QSerialPort *serial;
     QTimer *decodetimer;
+
+     QTimer *UpdateDateTimer;
 
 };
 

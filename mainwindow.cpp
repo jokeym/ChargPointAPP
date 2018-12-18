@@ -3,6 +3,7 @@
 #include "stdio.h"
 #include "string.h"
 #include <QDateTime>
+#include "string.h"
 
 RecvUart_t RecvUart;
 
@@ -12,10 +13,10 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->Set_dateTimeEdit->setDateTime(QDateTime::currentDateTime());
     ui->lineEdit_ResidueCnt->setReadOnly(true);
     ui->lineEdit_NowPower->setReadOnly(true);
     ui->Now_dateTimeEdit->setReadOnly(true);
+
 
     foreach(const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
     {
@@ -32,14 +33,22 @@ MainWindow::MainWindow(QWidget *parent) :
 
     decodetimer = new QTimer(this);
     connect(decodetimer, SIGNAL(timeout()), this, SLOT(DecodeMsg()));
-    decodetimer->stop();
-//    decodetimer->start(100);
+    //    decodetimer->stop();
+    decodetimer->start(100);
+
+    UpdateDateTimer = new QTimer(this);
+    connect(UpdateDateTimer, SIGNAL(timeout()), this, SLOT(updateDateSlots()));
+    UpdateDateTimer->start(1000);
 
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::updateDateSlots(){
+        ui->Set_dateTimeEdit->setDateTime(QDateTime::currentDateTime());
 }
 
 static int checksum(unsigned char *buff, int len)
@@ -165,7 +174,7 @@ void MainWindow::DecodeMsg(){
         ui->textEdit->append(str);
 
         RecvUart.RecvStr.clear();
-        decodetimer->stop();
+        //        decodetimer->stop();
 
         QStringList listcmd = str.split(QRegExp("[\r\n]"),QString::SkipEmptyParts);
 
@@ -173,18 +182,17 @@ void MainWindow::DecodeMsg(){
             qDebug()<<"收到的指令："<<listcmd.at(i);
             QStringList list = listcmd.at(i).split(QRegExp("[,*]"));
 
-            for(quint8 i = 0 ; i<list.size();i++)
-                qDebug()<<list.at(i);
-
-            if(list.at(0)!=CMD_HEAD){
+            if(list.at(0)!="$CHARGE"){
                 qDebug()<<"数据出错";
+                return ;
             }
+            //            for(quint8 i = 0 ; i<list.size();i++)
+            //                qDebug()<<i<<list.at(i);
 
             cmd = GetCMDType(list.at(1));
 
             switch(cmd){
             case CMD_CTRLINFO:
-                qDebug()<<"CMD_SETCTRL";
                 float value =  list.at(2).toFloat()*220;
                 ui->lineEdit_MinPower->setText(QString("%1").arg(value));
 
@@ -194,14 +202,18 @@ void MainWindow::DecodeMsg(){
                 ui->lineEdit_NowPower->setText(list.at(4));
                 ui->lineEdit_ResidueCnt->setText(list.at(5));
 
-                QDateTime dateTime;
-                uint32_t seconds = list.at(6).toInt(&ok,10);
-                dateTime = QDateTime::fromTime_t(seconds);
-                ui->Now_dateTimeEdit->setDateTime(dateTime);
+//                QDateTime dateTime;
+//                uint32_t seconds = list.at(6).toInt(&ok,10);
+//                dateTime = QDateTime::fromTime_t(seconds);
 
-                if(list.at(7).toInt(&ok,10)){
+//                ui->Now_dateTimeEdit->setDateTime(dateTime);
+
+                qDebug()<<"日期:"<<list.at(6);
+                qDebug()<<"时间:"<<list.at(7);
+
+                if(list.at(8).toInt(&ok,10)){
                     ui->radioButton_RestartFlag->setChecked(true);
-                    ui->lineEdit_ResetTime->setText(list.at(8));
+                    ui->lineEdit_ResetTime->setText(list.at(9));
                 }
                 else{
                     ui->radioButton_RestartFlag->setChecked(false);
@@ -248,7 +260,31 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
         RecvUart.MinCurrent = ui->lineEdit_MinPower->text().toFloat()/220.00;
         RecvUart.MaxCurrent = ui->lineEdit_MaxPower->text().toFloat()/220.00;
 
-        RecvUart.SetRTCTime =ui->Set_dateTimeEdit->dateTime().toTime_t();   //将当前时间转为时间戳
+        RecvUart.SetRTCTime =ui->Set_dateTimeEdit->dateTime().toTime_t() /*+ 3600*8*/;   //将当前时间转为时间戳
+        qDebug()<<"设置的时间："<<ui->Set_dateTimeEdit->dateTime().toString("yyyy-MM-dd HH:mm:ss");
+#if 0
+        QString hex;
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().year()-2000, 16).toUpper();
+        RecvUart.year = hex.toInt(0,16);
+
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().month(), 16).toUpper();
+        RecvUart.month = hex.toInt(0,16);
+
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().day(), 16).toUpper();
+        RecvUart.day = hex.toInt(0,16);
+
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().hour(), 16).toUpper();
+        RecvUart.hour = hex.toInt(0,16);
+
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().minute(), 16).toUpper();
+        RecvUart.min = hex.toInt(0,16);
+
+        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().second(), 16).toUpper();
+        RecvUart.sec = hex.toInt(0,16);
+
+        qDebug()<<"日期"<<RecvUart.year<<RecvUart.month<<RecvUart.day;
+        qDebug()<<"时间"<<RecvUart.hour<<RecvUart.min<<RecvUart.sec;
+#endif
 
         if(ui->radioButton_RestartFlag->isChecked()){
             RecvUart.RestartFlag =1;
@@ -258,35 +294,38 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
             RecvUart.RestartFlag =0;
             RecvUart.RestartTime =0;
         }
+#if 0
+        sprintf(p,"SETCTRL,%.2f,%.2f,%x,%x,%x,%d,%d,%d,%d,%d",RecvUart.MinCurrent,RecvUart.MaxCurrent,\
+                RecvUart.year,RecvUart.month,RecvUart.day,\
+                RecvUart.hour,RecvUart.min,RecvUart.sec,\
+                RecvUart.RestartFlag,RecvUart.RestartTime);
+#endif
 
         sprintf(p,"SETCTRL,%.2f,%.2f,%d,%d,%d",RecvUart.MinCurrent,RecvUart.MaxCurrent,\
-                RecvUart.SetRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
-
-
+                      RecvUart.SetRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
         break;
 
-    case CMD_CTRLINFO:
+//    case CMD_CTRLINFO:
 
-        RecvUart.MinPower = ui->lineEdit_MinPower->text().toInt(&ok,10);
-        RecvUart.MaxPower = ui->lineEdit_MaxPower->text().toInt(&ok,10);
-        RecvUart.NowPower = ui->lineEdit_NowPower->text().toInt(&ok,10);
-        RecvUart.ResidueCnt = ui->lineEdit_ResidueCnt->text().toInt(&ok,10);
+//        RecvUart.MinPower = ui->lineEdit_MinPower->text().toInt(&ok,10);
+//        RecvUart.MaxPower = ui->lineEdit_MaxPower->text().toInt(&ok,10);
+//        RecvUart.NowPower = ui->lineEdit_NowPower->text().toInt(&ok,10);
+//        RecvUart.ResidueCnt = ui->lineEdit_ResidueCnt->text().toInt(&ok,10);
 
-        RecvUart.NowRTCTime =QDateTime::currentDateTime().toTime_t();   //将当前时间转为时间戳
+//        RecvUart.NowRTCTime =QDateTime::currentDateTime().toTime_t();   //将当前时间转为时间戳
 
-        if(ui->radioButton_RestartFlag->isChecked()){
-            RecvUart.RestartFlag =1;
-            RecvUart.RestartTime =ui->lineEdit_MinPower->text().toInt(&ok,10);
-        }
-        else {
-            RecvUart.RestartFlag =0;
-            RecvUart.RestartTime =0;
-        }
-        sprintf(p,"CTRLINFO,%d,%d,%d,%d,%d,%d,%d",RecvUart.MinPower,RecvUart.MaxPower,RecvUart.NowPower,\
-                RecvUart.ResidueCnt,RecvUart.NowRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
+//        if(ui->radioButton_RestartFlag->isChecked()){
+//            RecvUart.RestartFlag =1;
+//            RecvUart.RestartTime =ui->lineEdit_MinPower->text().toInt(&ok,10);
+//        }
+//        else {
+//            RecvUart.RestartFlag =0;
+//            RecvUart.RestartTime =0;
+//        }
+//        sprintf(p,"CTRLINFO,%d,%d,%d,%d,%d,%d,%d",RecvUart.MinPower,RecvUart.MaxPower,RecvUart.NowPower,\
+//                RecvUart.ResidueCnt,RecvUart.NowRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
+//        break;
 
-
-        break;
 
     }
 
