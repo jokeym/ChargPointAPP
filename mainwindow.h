@@ -9,6 +9,12 @@
 
 #define CMD_HEAD "$CHARGE"
 
+#define DEFAULT_SET_MAX_CURRENT 5
+#define DEFAULT_MAX_CURRENT 2.5
+
+#define DEFAULT_SET_MIN_CURRENT 0.01
+#define DEFAULT_MIN_CURRENT 0.04
+
 typedef enum _CMD_TYPE_t {
     CMD_NULL=0,      //空
     CMD_UNKNOWN,   //未知指令
@@ -25,7 +31,7 @@ typedef struct _RecvUart_t
     qint8 UartOpenFlag ;
     QString RecvStr;
 
-    qint16 NowPower,MinPower,MaxPower;
+    qint16 NowChannel , NowPower,MinPower,MaxPower;
     qint32 NowRTCTime,SetRTCTime;
     qint32 RestartFlag,RestartTime;
     qint16 ResidueCnt;
@@ -51,7 +57,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-
+    int checksum(QString str);
     void AddChecksum(char *p);
     QString EncodMsg(CMD_TYPE_t cmd);
     CMD_TYPE_t GetCMDType(QString cmdstr);

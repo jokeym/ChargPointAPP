@@ -13,10 +13,16 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->Set_dateTimeEdit->setDateTime(QDateTime::currentDateTime());
     ui->lineEdit_ResidueCnt->setReadOnly(true);
     ui->lineEdit_NowPower->setReadOnly(true);
     ui->Now_dateTimeEdit->setReadOnly(true);
 
+    ui->groupBox_PortInfo->hide();
+    ui->groupBox_text->hide();
+
+
+    qDebug()<<"213"<<1.8*220;
 
     foreach(const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
     {
@@ -28,12 +34,9 @@ MainWindow::MainWindow(QWidget *parent) :
             serial.close();
         }
     }
-    /*查找串口OK*/
-    qDebug() << tr("界面设定成功！");
 
     decodetimer = new QTimer(this);
     connect(decodetimer, SIGNAL(timeout()), this, SLOT(DecodeMsg()));
-    //    decodetimer->stop();
     decodetimer->start(100);
 
     UpdateDateTimer = new QTimer(this);
@@ -48,14 +51,30 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::updateDateSlots(){
-        ui->Set_dateTimeEdit->setDateTime(QDateTime::currentDateTime());
+    ui->Set_dateTimeEdit->setDateTime(QDateTime::currentDateTime());
+    if(ui->PortBox->currentIndex()<0){
+        foreach(const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
+        {
+            QSerialPort serial;
+            serial.setPort(info);
+            if(serial.open(QIODevice::ReadWrite))
+            {
+                ui->PortBox->addItem(serial.portName());
+                serial.close();
+            }
+        }
+    }
 }
 
-static int checksum(unsigned char *buff, int len)
-{
+int MainWindow::checksum(QString str){
+
     unsigned char sum = 0;
     unsigned char cs = 0;
     int i = 0;
+
+    QByteArray sdata = str.toLatin1();
+    unsigned char *buff  = (unsigned char *)sdata.data();
+
     char *p = strchr((char *)buff, '*');
 
     if (!p)
@@ -94,6 +113,9 @@ void MainWindow::Read_Data()
 
 void MainWindow::on_pushButton_Open_clicked()
 {
+
+    if(ui->PortBox->currentIndex()<0)
+        return ;
 
     if(ui->PortBox->isEnabled()){
         serial = new QSerialPort;
@@ -174,51 +196,76 @@ void MainWindow::DecodeMsg(){
         ui->textEdit->append(str);
 
         RecvUart.RecvStr.clear();
-        //        decodetimer->stop();
 
         QStringList listcmd = str.split(QRegExp("[\r\n]"),QString::SkipEmptyParts);
 
         for(quint8 i = 0 ; i<listcmd.size();i++){
             qDebug()<<"收到的指令："<<listcmd.at(i);
+
+            if(!checksum(listcmd.at(i))){
+                qDebug()<<"校验出错";
+                continue;
+            }
+
             QStringList list = listcmd.at(i).split(QRegExp("[,*]"));
 
             if(list.at(0)!="$CHARGE"){
                 qDebug()<<"数据出错";
                 return ;
             }
-            //            for(quint8 i = 0 ; i<list.size();i++)
-            //                qDebug()<<i<<list.at(i);
 
             cmd = GetCMDType(list.at(1));
-
             switch(cmd){
             case CMD_CTRLINFO:
-                float value =  list.at(2).toFloat()*220;
-                ui->lineEdit_MinPower->setText(QString("%1").arg(value));
+                QString str;
+                RecvUart.MinCurrent = list.at(2).toFloat();
+                RecvUart.MinPower = RecvUart.MinCurrent * 220;
+                ui->doubleSpinBox_MinCurrent->setValue(RecvUart.MinCurrent);
+                str = QString::number(RecvUart.MinPower,10);
+                ui->lineEdit_MinPower->setText(str);
 
-                value =  list.at(3).toFloat()*220;
-                ui->lineEdit_MaxPower->setText(QString("%1").arg(value));
+                RecvUart.MaxCurrent = list.at(3).toFloat();
+                RecvUart.MaxPower = RecvUart.MaxCurrent * 220;
+                ui->doubleSpinBox_MaxCurrent->setValue(RecvUart.MaxCurrent);
 
-                ui->lineEdit_NowPower->setText(list.at(4));
-                ui->lineEdit_ResidueCnt->setText(list.at(5));
+                str = QString::number(RecvUart.MaxPower,10);
+                ui->lineEdit_MaxPower->setText(str);
 
-//                QDateTime dateTime;
-//                uint32_t seconds = list.at(6).toInt(&ok,10);
-//                dateTime = QDateTime::fromTime_t(seconds);
+                ui->lineEdit_NowPower->setText("通道 "+list.at(4) +" 功率: "+list.at(5) +" W");
 
-//                ui->Now_dateTimeEdit->setDateTime(dateTime);
+                ui->lineEdit_ResidueCnt->setText(list.at(6));
 
-                qDebug()<<"日期:"<<list.at(6);
-                qDebug()<<"时间:"<<list.at(7);
+                QDateTime dateTime;
 
-                if(list.at(8).toInt(&ok,10)){
+                quint32 sdate = list.at(7).toInt(&ok,10);
+                quint32 stime = list.at(8).toInt(&ok,10);
+
+                RecvUart.year = sdate/10000;
+                RecvUart.month = (sdate - RecvUart.year*10000)/100;
+                RecvUart.day = sdate%100;
+
+                RecvUart.hour = stime/10000;
+                RecvUart.min  = (stime - RecvUart.hour*10000)/100;
+                RecvUart.sec  = stime%100;
+                QDate qdate;
+                qdate.setDate(RecvUart.year,RecvUart.month,RecvUart.day);
+
+                QTime qtime;
+                qtime.setHMS(RecvUart.hour,RecvUart.min,RecvUart.sec);
+
+                dateTime.setDate(qdate);
+                dateTime.setTime(qtime);
+
+                ui->Now_dateTimeEdit->setDateTime(dateTime);
+
+                if(list.at(10).toInt(&ok,10)){
                     ui->radioButton_RestartFlag->setChecked(true);
-                    ui->lineEdit_ResetTime->setText(list.at(9));
+                    ui->lineEdit_ResetTime->setText(list.at(10));
                 }
                 else{
-                    ui->radioButton_RestartFlag->setChecked(false);
-                    ui->lineEdit_ResetTime->setEnabled(false);
+                    ui->lineEdit_ResetTime->setText("未设置重启时间");
                 }
+
                 break;
             }
         }
@@ -257,76 +304,45 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
         break;
 
     case CMD_SETCTRL:
-        RecvUart.MinCurrent = ui->lineEdit_MinPower->text().toFloat()/220.00;
-        RecvUart.MaxCurrent = ui->lineEdit_MaxPower->text().toFloat()/220.00;
+        RecvUart.MinCurrent = ui->doubleSpinBox_MinCurrent->value();
+        RecvUart.MaxCurrent = ui->doubleSpinBox_MaxCurrent->value();
+
+        if(RecvUart.MinCurrent < DEFAULT_SET_MIN_CURRENT || !RecvUart.MinCurrent){
+            break;
+        }
+        if(RecvUart.MaxCurrent > DEFAULT_SET_MAX_CURRENT || !RecvUart.MaxCurrent){
+//            ui->lineEdit_MinCurrent->setText("最大电流设置出错");
+            break;
+        }
+
+        if(RecvUart.MinCurrent > RecvUart.MaxCurrent){
+//            ui->lineEdit_MinCurrent->setText("最小电流不允许小于最大电流");
+//            ui->lineEdit_MinCurrent->setText("最小电流不允许小于最大电流");
+            break;
+        }
+
 
         RecvUart.SetRTCTime =ui->Set_dateTimeEdit->dateTime().toTime_t() /*+ 3600*8*/;   //将当前时间转为时间戳
-        qDebug()<<"设置的时间："<<ui->Set_dateTimeEdit->dateTime().toString("yyyy-MM-dd HH:mm:ss");
-#if 0
-        QString hex;
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().year()-2000, 16).toUpper();
-        RecvUart.year = hex.toInt(0,16);
-
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().month(), 16).toUpper();
-        RecvUart.month = hex.toInt(0,16);
-
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().date().day(), 16).toUpper();
-        RecvUart.day = hex.toInt(0,16);
-
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().hour(), 16).toUpper();
-        RecvUart.hour = hex.toInt(0,16);
-
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().minute(), 16).toUpper();
-        RecvUart.min = hex.toInt(0,16);
-
-        hex= QString::number(ui->Set_dateTimeEdit->dateTime().time().second(), 16).toUpper();
-        RecvUart.sec = hex.toInt(0,16);
-
-        qDebug()<<"日期"<<RecvUart.year<<RecvUart.month<<RecvUart.day;
-        qDebug()<<"时间"<<RecvUart.hour<<RecvUart.min<<RecvUart.sec;
-#endif
+        //        qDebug()<<"设置的时间："<<ui->Set_dateTimeEdit->dateTime().toString("yyyy-MM-dd HH:mm:ss");
 
         if(ui->radioButton_RestartFlag->isChecked()){
             RecvUart.RestartFlag =1;
             RecvUart.RestartTime =ui->lineEdit_ResetTime->text().toInt(&ok,10);
+
+            if(!RecvUart.RestartTime || RecvUart.RestartTime>24){
+                ui->lineEdit_ResetTime->setText("设置时间出错");
+                break;
+            }
         }
         else {
             RecvUart.RestartFlag =0;
             RecvUart.RestartTime =0;
         }
-#if 0
-        sprintf(p,"SETCTRL,%.2f,%.2f,%x,%x,%x,%d,%d,%d,%d,%d",RecvUart.MinCurrent,RecvUart.MaxCurrent,\
-                RecvUart.year,RecvUart.month,RecvUart.day,\
-                RecvUart.hour,RecvUart.min,RecvUart.sec,\
-                RecvUart.RestartFlag,RecvUart.RestartTime);
-#endif
+
 
         sprintf(p,"SETCTRL,%.2f,%.2f,%d,%d,%d",RecvUart.MinCurrent,RecvUart.MaxCurrent,\
-                      RecvUart.SetRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
+                RecvUart.SetRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
         break;
-
-//    case CMD_CTRLINFO:
-
-//        RecvUart.MinPower = ui->lineEdit_MinPower->text().toInt(&ok,10);
-//        RecvUart.MaxPower = ui->lineEdit_MaxPower->text().toInt(&ok,10);
-//        RecvUart.NowPower = ui->lineEdit_NowPower->text().toInt(&ok,10);
-//        RecvUart.ResidueCnt = ui->lineEdit_ResidueCnt->text().toInt(&ok,10);
-
-//        RecvUart.NowRTCTime =QDateTime::currentDateTime().toTime_t();   //将当前时间转为时间戳
-
-//        if(ui->radioButton_RestartFlag->isChecked()){
-//            RecvUart.RestartFlag =1;
-//            RecvUart.RestartTime =ui->lineEdit_MinPower->text().toInt(&ok,10);
-//        }
-//        else {
-//            RecvUart.RestartFlag =0;
-//            RecvUart.RestartTime =0;
-//        }
-//        sprintf(p,"CTRLINFO,%d,%d,%d,%d,%d,%d,%d",RecvUart.MinPower,RecvUart.MaxPower,RecvUart.NowPower,\
-//                RecvUart.ResidueCnt,RecvUart.NowRTCTime,RecvUart.RestartFlag,RecvUart.RestartTime);
-//        break;
-
-
     }
 
     AddChecksum(sMessage);
@@ -356,5 +372,9 @@ void MainWindow::on_radioButton_RestartFlag_clicked()
     if(ui->radioButton_RestartFlag->isChecked()){
         ui->lineEdit_ResetTime->setEnabled(true);
     }
+    //    else{
+    //        ui->lineEdit_ResetTime->setEnabled(false);
+    //    }
+
 
 }

@@ -515,6 +515,9 @@ release/mainwindow.o: mainwindow.cpp mainwindow.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qrubberband.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qframe.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtCore/qabstractitemmodel.h \
+		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QDateTimeEdit \
+		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qdatetimeedit.h \
+		G:/Qt/install/5.10.1/mingw53_32/include/QtCore/qdatetime.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QGridLayout \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qgridlayout.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qlayout.h \
@@ -542,6 +545,8 @@ release/mainwindow.o: mainwindow.cpp mainwindow.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QPushButton \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qpushbutton.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qabstractbutton.h \
+		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QRadioButton \
+		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qradiobutton.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QSpacerItem \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QStatusBar \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qstatusbar.h \
@@ -552,8 +557,7 @@ release/mainwindow.o: mainwindow.cpp mainwindow.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/qtoolbar.h \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QVBoxLayout \
 		G:/Qt/install/5.10.1/mingw53_32/include/QtWidgets/QWidget \
-		G:/Qt/install/5.10.1/mingw53_32/include/QtCore/QDateTime \
-		G:/Qt/install/5.10.1/mingw53_32/include/QtCore/qdatetime.h
+		G:/Qt/install/5.10.1/mingw53_32/include/QtCore/QDateTime
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\mainwindow.o mainwindow.cpp
 
 release/moc_mainwindow.o: release/moc_mainwindow.cpp 
