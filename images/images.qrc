@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>add.png</file>
+        <file>cleanport.png</file>
+        <file>clearbytes.png</file>
+        <file>exit.png</file>
+        <file>header.bmp</file>
+        <file>lcd.bmp</file>
+        <file>loadfile.png</file>
+        <file>logo42-22.png</file>
+        <file>logo129-66.png</file>
+        <file>mesage.png</file>
+        <file>open.png</file>
+        <file>qcom.ICO</file>
+        <file>save.png</file>
+        <file>send.png</file>
+        <file>stop.png</file>
+        <file>write2file.png</file>
+    </qresource>
+</RCC>

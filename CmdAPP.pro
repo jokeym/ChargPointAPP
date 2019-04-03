@@ -4,11 +4,11 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport
+QT       += core gui serialport network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-TARGET = CmdAPP
+TARGET = OMJ
 TEMPLATE = app
 
 # The following define makes your compiler emit warnings if you use
@@ -32,3 +32,22 @@ HEADERS += \
 
 FORMS += \
         mainwindow.ui
+
+RESOURCES += \
+    images/images.qrc \
+    images/images.qrc \
+    images/images.qrc
+
+DISTFILES += \
+    images/header.bmp \
+    images/lcd.bmp \
+    images/loadfile.png \
+    images/logo42-22.png \
+    images/logo129-66.png \
+    images/mesage.png \
+    images/open.png \
+    images/save.png \
+    images/send.png \
+    images/stop.png \
+    images/write2file.png \
+    images/qcom.ICO
