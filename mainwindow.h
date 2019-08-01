@@ -14,13 +14,13 @@
 #include <QMessageBox>
 #include <QUdpSocket>
 #include <QComboBox>
-
+#include <QtNetwork>
 //通信协议
 #define MAX_COM_FALME_LENGHT    1100        // 数据帧的最大长度
 #define INITIAL_REMAINDER       0xA1EC      // CRC初始值
 
 #define COMMANDSYNTEX           0x3AA3
-#define COMM_PROTOCOL_VER       0x10        //0x01        // 通信协议版本
+#define COMM_PROTOCOL_VER       0x01        //0x01        // 通信协议版本
 #define COMM_RES                0x000000    // 保留字节
 #define DEV_TYPES               0x52000001  // 设备类型
 #define culDeviceVersion        0x180A0100
@@ -29,6 +29,8 @@
 #define LOCK_TYPES              0x52000012  // 设备类型
 #define LOCK_VER                0x04090000
 
+#define BROADCAST_PORT          0XFFFF
+
 typedef enum _CMD_TYPE_t {
     CMD_NULL=0,      //空
     CMD_UNKNOWN,   //未知指令
@@ -36,14 +38,21 @@ typedef enum _CMD_TYPE_t {
     CMD_ERROR,     //错误
     CMD_CONNECT,   //连接
 
+    CMDID_GetDevID          = 0x0002,   // 读设备地址
+    CMDID_DevID             = 0x0002,    // 设备地址
+    CMDID_SetDevID          = 0x0082,   // 设置设备地址
+
+    CMDID_GetServerIp       = 0x0004,   // 读远程服务器IP地址
+    CMDID_ServerIp          = 0x0004,   // 远程服务器IP地址
+    CMDID_SetServerIp       = 0x0084,   // 设置远程服务器IP地址
 
     CMDID_GetDevSN          = 0x8001,   // 读设备地址，序列号
-    CMDID_DevSN             = 0x8002,   // 设备地址，序列号
+    CMDID_DevSN             = 0x8001,   // 设备地址，序列号
     CMDID_SetDevSN          = 0x8081,   // 设置设备地址，序列号
 
-    CMDID_GetLanIp          = 0x8082,   // 读LAN网络IP
-    CMDID_LanIp             = 0x8083,   // LAN网络IP
-    CMDID_SetLanIp          = 0x8084,   // 设置LAN网络IP
+    CMDID_GetLanIp          = 0x8002,   // 读LAN网络IP
+    CMDID_LanIp             = 0x8002,   // LAN网络IP
+    CMDID_SetLanIp          = 0x8082,   // 设置LAN网络IP
 
     CMDID_Login             = 0x0901,   // 设备登录
     CMDID_SendPlusData      = 0x0902,   // 实时主动上传心跳数据
@@ -51,9 +60,12 @@ typedef enum _CMD_TYPE_t {
     CMDID_GetZigbeeParam    = 0x010C,   // 获取ZigBee参数
     CMDID_ZigbeeParam       = 0x010C,   // 返回ZigBee参数
     CMDID_SetZigbeeParam    = 0x018C,   // 设置ZigBee参数
+    CMDID_UpdateShake       = 0X0F01,   // 升级握手
+
+    CMDID_ReadBSCommParam   = 0x0008,   // 读B/S协议通信参数
+    CMDID_SetBSCommParam    = 0x0088,   // 设置B/S协议通信参数
 
     CMD_LOCK_STATUS=0X0A69,
-    CMD_LOCK_INFO = 0X0F01,
 
 
 } CMD_TYPE_t;
@@ -186,10 +198,13 @@ public:
     QString keyCreateTimeStr,keyExpirateTimeStr;
 
     QString ClientIPStr;
+    quint16 ClientPort;
     void UDPSendData();
     QString GetMsgStr(QStringList list , quint8 start, quint8 end);
 
     void OMJParaSet();
+
+    quint8 BroadCastFlag;
 
 private slots:
 
@@ -201,6 +216,7 @@ private slots:
     void on_pushButton_Clean_clicked();
     void on_pushButton_Send_clicked();
     void DecodeMsg();
+    void DecodeBroadcastMsg(QString AddrInfo,QString BroadcastMsg);
 
     void updateDateSlots();
     void on_pushButton_CreateKey_clicked();
@@ -214,9 +230,12 @@ private slots:
     void on_pushButton_clicked();
     void on_pushButton_heartbeat_clicked();
 
-    void on_pushButton_GetSN_clicked();
+    void on_pushButton_GetInfo_clicked();
+    void on_pushButton_SetInfo_clicked();
 
-    void on_pushButton_SetSN_clicked();
+    void on_pushButton_Broadcast_clicked();
+
+    void on_comboBox_Connetion_currentIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;
@@ -230,6 +249,8 @@ private:
     QTcpSocket *currentClient;
 
     QUdpSocket* UDPClinet;//通信socket
+
+    QList<QUdpSocket*> RevUDPClient;
 
     QWidget *GatewayWidget;
     QComboBox *GatewayboBox;

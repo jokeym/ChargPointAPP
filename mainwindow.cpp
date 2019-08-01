@@ -8,8 +8,8 @@
 
 
 
-#define MINWIDTH  480
-#define MINHEIGHT 415
+#define MINWIDTH  880
+#define MINHEIGHT 652
 
 RecvUart_t RecvUart;
 
@@ -26,6 +26,13 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    QString TitleStr;
+    static const QDate buildDate = QLocale( QLocale::English ).toDate( QString( __DATE__ ).replace( "  ", " 0" ), "MMM dd yyyy");
+    static const QTime buildTime = QTime::fromString( __TIME__, "hh:mm:ss" );
+
+    TitleStr = "  V_"+buildDate.toString("yyyy MM dd  ")+buildTime.toString("hh:mm:ss");
+    this->setWindowTitle(this->windowTitle()+TitleStr);
+
     QDesktopWidget *desktop = QApplication::desktop();
     QRect screen = desktop->screenGeometry();
     int screenWidth = screen.width();
@@ -33,11 +40,23 @@ MainWindow::MainWindow(QWidget *parent) :
     this->setMinimumWidth(MINWIDTH);
     this->setMinimumHeight(MINHEIGHT);
     QRect Qsize((screenWidth-MINWIDTH)/2,(screenHeight-MINHEIGHT)/2,MINWIDTH,MINHEIGHT);
-    //    this->setGeometry(Qsize);
+        this->setGeometry(Qsize);
+
+#if 1
+    QString localHostName = QHostInfo::localHostName();
+    QHostInfo info = QHostInfo::fromName(localHostName);
+
+    foreach(QHostAddress address,info.addresses())
+    {
+        if(address.protocol() == QAbstractSocket::IPv4Protocol )
+        {
+            ui->comboBox_LocalAddr->addItem(address.toString());
+        }
+
+    }
+#endif
 
     tcpServer = new QTcpServer(this);
-    /*获取本地IP*/
-    //ui->lineEdit_TCP_Addrs->setText(QNetworkInterface().allAddresses().at(1).toString());
 
     ui->pushButton_TCP_Send->setEnabled(false);
     connect(tcpServer, SIGNAL(newConnection()), this, SLOT(NewConnectionSlot()));
@@ -48,27 +67,14 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(UDPClinet, SIGNAL(readyRead()), this, SLOT(Read_Data()));
 
 
-    //    on_pushButton_TCP_Open_clicked();
-
     ui->dateTimeEdit_KeyExpirationTime->setDateTime(QDateTime::currentDateTime().addMonths(1));
-#if 0
-    QList<QNetworkInterface> list = QNetworkInterface::allInterfaces();
-    //获取所有网络接口的列表
-    foreach(QNetworkInterface interface,list)
-    {
-        //硬件地址
-        QList<QNetworkAddressEntry> entryList =interface.addressEntries();
-        //获取IP地址条目列表，每个条目中包含一个IP地址，一个子网掩码和一个广播地址
-        foreach(QNetworkAddressEntry entry,entryList)
-        {//遍历每一个IP地址条目
-            qDebug()<<"IP Address: "<<entry.ip().toString();
 
-        }
-    }
-#endif
-    //    ui->groupBox_PortInfo->hide();
-    //    ui->groupBox_text->hide();
-    //    ui->groupBox_Activation->hide();
+//    ui->groupBox_text->hide();
+    ui->pushButton_TCP_Send->hide();
+
+    quint8 tabWidgetCount = ui->tabWidget->count();
+    for(quint8 i = 1;i<tabWidgetCount;i++)
+        ui->tabWidget->removeTab(0);
 
     decodetimer = new QTimer(this);
     connect(decodetimer, SIGNAL(timeout()), this, SLOT(DecodeMsg()));
@@ -172,6 +178,9 @@ void MainWindow::updateDateSlots(){
     //    cursor.movePosition(QTextCursor::End);
     //    ui->textEdit->setTextCursor(cursor);
 
+    //    qDebug()<<"height:"<<this->height();
+    //    qDebug()<<"width:"<<this->width();
+
     if( ui->textEdit->document()->lineCount()>36)
         ui->textEdit->clear();
 #if 0
@@ -192,17 +201,14 @@ void MainWindow::updateDateSlots(){
         else if(ui->tabWidget->currentIndex()==5)
         {
             EncodMsg(CMD_LOCK_STATUS);
-            //EncodMsg(CMD_LOCK_INFO);
+
         }
     }
 #endif
 
-
-    if(ui->tabWidget->currentIndex()!=1)
-        return;
-
+    return ;
     /*自动搜索串口号*/
-    if(ui->PortBox->currentIndex()<0){
+    if(ui->PortBox->currentIndex()<0 && ui->tabWidget->currentIndex()==1){
         foreach(const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
         {
             QSerialPort serial;
@@ -235,7 +241,6 @@ static quint16 checksum(unsigned char *buff, int len)
 
     return uiCrcValue;
 }
-
 
 void MainWindow::Read_Data()
 {
@@ -279,15 +284,17 @@ void MainWindow::Read_Data()
     if(RecvUart.CommonTypes & CONNECT_UDP)
     {
         char buf[1024] = {0};
+        static QString sRevIP,sBrocastIP;
 
         QHostAddress addr; //对方的ip
-        quint16 port; //对方的端口
+        quint16 port = 0; //对方的端口
         qint64 len;
 
         len = UDPClinet->readDatagram(buf, sizeof(buf), &addr, &port);
 
         if(len>0)
         {
+            // UDP收到的数据
             QString sRevstr;
             for(int i =0;i<len;++i)
             {
@@ -295,7 +302,8 @@ void MainWindow::Read_Data()
                 s.sprintf("%02x ",(quint8)buf[i]);
                 sRevstr += s;
             }
-            RecvUart.RecvStr=sRevstr.toUpper();
+
+            qDebug()<<"sRevstr:"<<sRevstr;
 
             QString TimeStr;
             QDateTime sTime;
@@ -305,7 +313,30 @@ void MainWindow::Read_Data()
             QString Showstr = QString("[%1:%2] %3\n\t    %4\n").arg(addr.toString()).arg(port).arg(TimeStr).arg(sRevstr);
             ui->textEdit->append(Showstr.toUpper());
 
-            ClientIPStr = addr.toString();
+            /*搜索端口*/
+            if(port == BROADCAST_PORT)
+            {
+
+                sBrocastIP = QString("%1").arg(addr.toString());
+                qDebug()<<"sBrocastIP"<<sBrocastIP;
+                DecodeBroadcastMsg(sBrocastIP,sRevstr.toUpper());
+
+            }
+            else /*常规端口*/
+            {
+
+                ClientIPStr = addr.toString();
+                ClientPort  = port;
+
+                RecvUart.RecvStr=sRevstr.toUpper();
+
+                if(sRevIP!=ClientIPStr)
+                {
+                    sRevIP = ClientIPStr;
+                    ui->lineEdit_DevIPAddr->setText(sRevIP);
+                    ui->lineEdit_ClientPort->setText(QString::number(port,10));
+                }
+            }
         }
 
 
@@ -399,11 +430,43 @@ QString MainWindow::GetMsgStr(QStringList list, quint8 start, quint8 end)
     return str;
 }
 
+// 广播消息处理
+void MainWindow::DecodeBroadcastMsg(QString AddrInfo , QString BroadcastMsg)
+{
+    QString str = BroadcastMsg,SN,ServicePort,ItemStr;
+    bool ok = true;
+    quint8 point = 0;
+    quint16 Port = 0;
+
+    if(!str.isEmpty())
+    {
+         qDebug()<<"Broadcast Recv:"<<str;
+
+        QStringList list = str.split(QRegExp("[ ]"));
+
+        if(GetMsgStr(list,point,2)!="3AA3") return ;
+        point+=8;
+
+        SN = GetMsgStr(list,point,point+8);
+        point+=8;
+
+        point+=13;
+        ServicePort = GetMsgStr(list,point,point+2);
+        point+=2;
+
+        ItemStr = QString("%1:%2 %3").arg(AddrInfo).arg(ServicePort.toInt(&ok,16)).arg(SN);
+        ui->comboBox_Connetion->addItem(ItemStr);
+
+
+    }
+}
+
 void MainWindow::DecodeMsg(){
     QString str = RecvUart.RecvStr;
     bool ok;
-    quint8 point = 0;
-    quint16 Cmd= 0, CmdLen = 0;
+    quint8 point = 0,i;
+    quint16 Cmd= 0, DataLen = 0;
+    QString  Addr;
 
     if(!str.isEmpty()){
         RecvUart.RecvStr.clear();
@@ -417,10 +480,10 @@ void MainWindow::DecodeMsg(){
         if(GetMsgStr(list,point,point+4)!="00000001") return ;
         point+=4;
 
-        //        if(GetMsgStr(list,point,point+8)!=ui->lineEdit_15->text())  return ;
+        ui->lineEdit_RedDevSN->setText(GetMsgStr(list,point,point+8));
         point+=8;
 
-        CmdLen = GetMsgStr(list,point,point+2).toInt();
+        DataLen = GetMsgStr(list,point,point+2).toInt();
         point+=2;
 
 
@@ -429,16 +492,25 @@ void MainWindow::DecodeMsg(){
 
         qDebug("Recv  Cmd:%04x",Cmd);
 
+        if(list.length()<22)
+        {
+            ui->statusBar->showMessage("数据过少",3000);
+            return;
+        }
+
         switch(Cmd)
         {
 
-
         case 0x0901:
-            if(list.at(point)=="00")
-            {
-                OMJDev.Login = 1;
-                ui->statusBar->showMessage("登录成功",1000);
-            }
+            ui->lineEdit_DevModeType->setText(GetMsgStr(list,point,point+4));
+            point+=4;
+
+            ui->lineEdit_DevVer->setText(GetMsgStr(list,point,point+4));
+            point+=4;
+
+            ui->lineEdit_DevID->setText(GetMsgStr(list,point,point+2));
+            point+=4;
+
             break;
         case 0x0902:
             if(list.at(point)=="01")
@@ -468,12 +540,36 @@ void MainWindow::DecodeMsg(){
 
             }
             break;
+        case CMDID_SetDevSN:
 
         case CMDID_DevSN:
             ui->lineEdit_DevID->setText(GetMsgStr(list,point,point+2));
             point+=2;
 
-            ui->lineEdit_DevSN->setText(GetMsgStr(list,point,point+8));
+            ui->lineEdit_WriteDevSN->setText(GetMsgStr(list,point,point+8));
+
+            if(Cmd == CMDID_SetDevSN)
+            {
+                ui->lineEdit_RedDevSN->setText(GetMsgStr(list,point,point+8));
+                ui->statusBar->showMessage("设备序列号修改成功", 3000);
+            }
+            else
+                ui->statusBar->showMessage("设备序列号读取成功",3000);
+
+
+            point+=8;
+
+            break;
+        case CMDID_SetZigbeeParam:
+            if(GetMsgStr(list,point,point+1).toInt(&ok,16)==0x01)
+            {
+                ui->statusBar->showMessage("Zigbee 参数设置成功",3000);
+            }
+            else
+            {
+                ui->statusBar->showMessage("Zigbee 参数设置失败",3000);
+            }
+
             break;
 
         case CMDID_ZigbeeParam:
@@ -501,34 +597,123 @@ void MainWindow::DecodeMsg(){
             ui->lineEdit_RetryTimeout->setText(QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10));
             point+=1;
 
+            qDebug()<<"Zigbee 串口率："<<GetMsgStr(list,point,point+1).toInt(&ok,16);
+            ui->comboBox_ZigbeeBaud->setCurrentIndex(GetMsgStr(list,point,point+1).toInt(&ok,16)-1);
+            point+=1;
+
+            ui->statusBar->showMessage("Zigbee 参数读取成功",3000);
             break;
 
         case CMDID_LanIp:
-            QString IP;
-
-            IP += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10)+".";
+            ui->statusBar->showMessage("网口参数读取成功",3000);
+        case CMDID_SetLanIp:
+            if(Cmd==CMDID_SetLanIp)
+                ui->statusBar->showMessage("网口参数设置成功",3000);
+            ui->comboBox_DHCP->setCurrentIndex(GetMsgStr(list,point,point+1).toInt(&ok,16));
             point+=1;
 
-            IP += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10)+".";
-            point+=1;
+            //IP地址
+            for(i = 0 ; i<4 ;i++)
+            {
+                Addr += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10);
+                if(i<3)
+                    Addr += +".";
 
-            IP += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10)+".";
-            point+=1;
+                point+=1;
+            }
+            ui->lineEdit_LanIP->setText(Addr);
 
-            IP += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10);
-            point+=1;
+            //子网掩码
+            Addr.clear();
+            for(i = 0 ; i<4 ;i++)
+            {
+                Addr += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10);
+                if(i<3)
+                    Addr += +".";
 
-            ui->lineEdit_ServerIP->setText(IP);
+                point+=1;
+            }
+            ui->lineEdit_MASK->setText(Addr);
+
+            //网关地址
+            Addr.clear();
+            for(i = 0 ; i<4 ;i++)
+            {
+                Addr += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10);
+                if(i<3)
+                    Addr += +".";
+
+                point+=1;
+            }
+            ui->lineEdit_Router->setText(Addr);
+
+            //端口号
+            ui->lineEdit_LAN_Port->setText(QString::number(GetMsgStr(list,point,point+2).toInt(&ok,16),10));
+            point+=2;
+
+            //MAC地址
+            Addr.clear();
+            for(i = 0 ; i<6 ;i++)
+            {
+
+                quint8 Value;
+                Value = GetMsgStr(list,point,point+1).toInt(&ok,16);
+                Addr += QString("%1").arg(Value,2,16,QLatin1Char('0'));
+                if(i<5)
+                    Addr += +":";
+                point+=1;
+            }
+            ui->lineEdit_MAC->setText(Addr.toUpper());
 
             break;
 
+        case CMDID_ServerIp:
+            ui->statusBar->showMessage("服务器参数读取成功",3000);
+        case CMDID_SetServerIp:
+            if(Cmd==CMDID_SetServerIp)
+                ui->statusBar->showMessage("服务器参数设置成功",3000);
+
+            Addr.clear();
+            //IP地址
+            for(i = 0 ; i<4 ;i++)
+            {
+                Addr += QString::number(GetMsgStr(list,point,point+1).toInt(&ok,16),10);
+                if(i<3)
+                    Addr += +".";
+                point+=1;
+            }
+            ui->lineEdit_ServerIP->setText(Addr);
+
+            //端口号
+            ui->lineEdit_ServerPort->setText(QString::number(GetMsgStr(list,point,point+2).toInt(&ok,16),10));
+            point+=2;
+
+            ui->lineEdit_ServerDNS->setText(GetMsgStr(list,point,list.length()- 3));
+            break;
+
+        case CMDID_UpdateShake:
+            ui->lineEdit_DevModeType->setText(GetMsgStr(list,point,point+4));
+            point+=4;
+            ui->lineEdit_DevVer->setText(GetMsgStr(list,point,point+4));
+            point+=4;
+            ui->statusBar->showMessage("软件版本与设备类型读取成功",3000);
+            break;
+
+        case CMDID_SetBSCommParam:
+            ui->statusBar->showMessage("心跳时间设置成功",3000);
+        case CMDID_ReadBSCommParam:
+            if(CMDID_ReadBSCommParam==Cmd)
+                ui->statusBar->showMessage("心跳时间读取成功",3000);
+
+            ui->spinBox_PulseTimeInterval->setValue(GetMsgStr(list,point,point+2).toInt(&ok,16));
+            point+=2;
+            ui->spinBox_ReSendOverTime->setValue(GetMsgStr(list,point,point+2).toInt(&ok,16));
+            point+=2;
+            ui->spinBox_ReSendCount->setValue(GetMsgStr(list,point,point+1).toInt(&ok,16));
+            point+=1;
+            break;
+
         }
-
-
-
-
-
-
     }
 
 }
@@ -629,23 +814,40 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
 
     str += QString("%1").arg(COMM_PROTOCOL_VER,2,16,QLatin1Char('0'));
 
-    if(COMMANDSYNTEX==0x01)
+    if(COMM_PROTOCOL_VER==0x01)
     {
-        OMJDev.SNStr = ui->lineEdit_DevSN->text();
-        str += OMJDev.SNStr;
+        OMJDev.SNStr = ui->lineEdit_RedDevSN->text();
+        if(OMJDev.SNStr.length()==16)
+        {
+            str += OMJDev.SNStr;
+        }
+        else
+        {
+            ui->statusBar->showMessage("设备序列号输入错误",3000);
+            return   0;
+        }
+
     }
 
     datastr += QString("%1").arg(cmd,4,16,QLatin1Char('0'));
 
     switch(cmd)
     {
+    case CMDID_UpdateShake:
+        datastr +="655AA1255AA1";
+        break;
+    case CMDID_GetServerIp:
+        break;
     case CMDID_GetLanIp:
         break;
     case CMDID_GetZigbeeParam:
         break;
     case CMDID_GetDevSN:
         break;
+    case CMDID_ReadBSCommParam:
+        break;
 
+        //发给服务器模拟数据
     case 0x0901:
         datastr += QString::number(DEV_TYPES,16);
 
@@ -701,12 +903,6 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
 
         datastr += QString("%1").arg(0x00,4,16,QLatin1Char('0'));
         break;
-
-    case 0x0F01:
-        datastr += QString("%1").arg(LOCK_TYPES,8,16,QLatin1Char('0'));
-        datastr += QString("%1").arg(LOCK_VER,8,16,QLatin1Char('0'));
-        break;
-
     case CMDID_SetZigbeeParam:
         datastr += QString("%1").arg(ui->lineEdit_PanID->text().toInt(&ok,10),4,16,QLatin1Char('0'));
         datastr += QString("%1").arg(ui->lineEdit_Myaddr->text().toInt(&ok,10),4,16,QLatin1Char('0'));
@@ -716,6 +912,7 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
         datastr += QString("%1").arg(ui->lineEdit_SendRetryCount->text().toInt(&ok,10),2,16,QLatin1Char('0'));
         datastr += QString("%1").arg(ui->spinBox_Chan->value(),2,16,QLatin1Char('0'));
         datastr += QString("%1").arg(ui->lineEdit_RetryTimeout->text().toInt(&ok,10),2,16,QLatin1Char('0'));
+        datastr += QString("%1").arg(ui->comboBox_ZigbeeBaud->currentIndex()+1,2,16,QLatin1Char('0'));
         break;
 
     case CMDID_SetDevSN:
@@ -727,34 +924,101 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
         }
         datastr += QString("%1").arg(devStr,4,QLatin1Char('0'));
 
-        devStr = ui->lineEdit_DevSN->text();
+        devStr = ui->lineEdit_WriteDevSN->text();
         if(devStr.length()!=16)
         {
             ui->statusBar->showMessage("序列号输入错误，重新输入16位序列号",3000);
             return NULL;
         }
-        datastr += devStr;
+        datastr +=devStr;
+
+        //        devStr = QString::number(ui->spinBox_BeatTime->value(),16);
+        //        datastr += QString("%1").arg(devStr,2,QLatin1Char('0'));
         break;
 
     case CMDID_SetLanIp:
     {
-        quint8 uiIP[4];
-        quint32 sSetIP;
-        QString SetServerIP = ui->lineEdit_ServerIP->text();
-        QStringList listIp = SetServerIP.split(QRegExp("[.]"));
+        quint8 i,Dhcp;
+        quint8 uiIP[4],uiMAC[6];
+        QStringList listIp;
+        //DHCP
+        Dhcp = ui->comboBox_DHCP->currentIndex();
+        datastr += QString("%1").arg(Dhcp,2,16,QLatin1Char('0'));
 
-        for(quint8 i = 0;i<4;i++)
+        //IP地址
+        QString SetLanIP = ui->lineEdit_LanIP->text();
+        listIp = SetLanIP.split(QRegExp("[.]"));
+        for(i = 0;i<4;i++)
         {
             uiIP[i] = listIp.at(i).toInt();
-            qDebug()<<"uiIP"<<uiIP[i];
+            datastr += QString("%1").arg(uiIP[i],2,16,QLatin1Char('0'));
         }
 
-        sSetIP = uiIP[0]<<24 | uiIP[1]<<16 |uiIP[2]<<8 |uiIP[3];
+        //子网掩码
+        QString SetMaskAddr = ui->lineEdit_MASK->text();
+        listIp = SetMaskAddr.split(QRegExp("[.]"));
+        for(i = 0;i<4;i++)
+        {
+            uiIP[i] = listIp.at(i).toInt();
+            datastr += QString("%1").arg(uiIP[i],2,16,QLatin1Char('0'));
+        }
 
-        datastr += QString("%1").arg(sSetIP,8,16,QLatin1Char('0'));
+        //网关地址
+        QString SetRouterAddr = ui->lineEdit_Router->text();
+        listIp = SetRouterAddr.split(QRegExp("[.]"));
+        for(i = 0;i<4;i++)
+        {
+            uiIP[i] = listIp.at(i).toInt();
+            datastr += QString("%1").arg(uiIP[i],2,16,QLatin1Char('0'));
+        }
 
-        qDebug()<<"SetServerIP"<<SetServerIP;
+        //端口号
+        datastr += QString("%1").arg(ui->lineEdit_LAN_Port->text().toInt(&ok,10),4,16,QLatin1Char('0'));
+
+        //MAC地址
+        QString SetMACAddr = ui->lineEdit_MAC->text();
+        listIp.clear();
+        listIp = SetMACAddr.split(QRegExp("[:]"));
+        for(i = 0;i<6;i++)
+        {
+
+            uiMAC[i] = listIp.at(i).toInt(&ok,16);
+
+            if(i==0 && uiMAC[0]%2!=0)
+            {
+                ui->statusBar->showMessage("MAC地址输入错误，重新检测输入",3000);
+                return 0;
+            }
+            datastr += QString("%1").arg(uiMAC[i],2,16,QLatin1Char('0'));
+        }
     }
+        break;
+
+    case CMDID_SetServerIp:
+    {
+        quint8 Addr,i;
+        QStringList listIp;
+
+        //IP地址
+        QString SetServerIP = ui->lineEdit_ServerIP->text();
+        listIp = SetServerIP.split(QRegExp("[.]"));
+        for(i = 0;i<4;i++)
+        {
+            Addr = listIp.at(i).toInt();
+            datastr += QString("%1").arg(Addr,2,16,QLatin1Char('0'));
+        }
+
+        //端口号
+        datastr += QString("%1").arg(ui->lineEdit_ServerPort->text().toInt(&ok,10),4,16,QLatin1Char('0'));
+
+        datastr += ui->lineEdit_ServerDNS->text()+"\0";
+    }
+        break;
+
+    case CMDID_SetBSCommParam:
+        datastr += QString("%1").arg(ui->spinBox_PulseTimeInterval->value(),4,16,QLatin1Char('0'));
+        datastr += QString("%1").arg(ui->spinBox_ReSendOverTime->value(),4,16,QLatin1Char('0'));
+        datastr += QString("%1").arg(ui->spinBox_ReSendCount->value(),2,16,QLatin1Char('0'));
         break;
 
 
@@ -776,7 +1040,7 @@ QString MainWindow::EncodMsg(CMD_TYPE_t cmd){
     str += QString("%1").arg(CheckSum,4,16,QLatin1Char('0'));
     sMsg.append(str);
 
-    qDebug()<<"Encode sMsg:"<<sMsg.toUpper();
+    //    qDebug()<<"Encode sMsg:"<<sMsg.toUpper();
 
 
     ui->lineEdit->setText(sMsg.toUpper());
@@ -982,19 +1246,30 @@ void MainWindow::on_pushButton_TCP_Open_clicked()
     if(ui->comboBox_TCP_Type->currentIndex()==2)
     {
 
-
-        QString  strip = ui->lineEdit_TCP_Addrs->text();
+        QString strip = ui->comboBox_LocalAddr->currentText();
         quint16 serverport =ui->lineEdit_TCP_Port->text().toInt();
 
-        UDPClinet->bind(QHostAddress(strip),serverport);
-
-        RecvUart.CommonTypes |= CONNECT_UDP;
-
-        qDebug()<<strip<<serverport;
 
         if(ui->pushButton_TCP_Open->text()=="监听")
         {
             ui->pushButton_TCP_Open->setText("断开");
+
+            UDPClinet->bind(QHostAddress(strip),serverport);
+
+            ui->statusBar->showMessage("开始监听UDP",2000);
+
+            RecvUart.CommonTypes |= CONNECT_UDP;
+        }
+        else if(ui->pushButton_TCP_Open->text()=="断开")
+        {
+            ui->pushButton_TCP_Open->setText("监听");
+
+            UDPClinet->close();
+
+             ui->statusBar->showMessage("断开UDP",2000);
+
+            RecvUart.CommonTypes &= ~CONNECT_UDP;
+
         }
     }
 
@@ -1034,17 +1309,45 @@ void MainWindow::on_pushButton_TCP_Send_clicked()
 // UDP
 void MainWindow::UDPSendData()
 {
-    QString ip = ClientIPStr;
-    quint16 port = ui->lineEdit_TCP_Port->text().toInt();
+    QString ip   = ui->lineEdit_DevIPAddr->text();
+    quint16 port ;
 
-    QString str = ui->lineEdit->text().toUpper();
+    if(ui->lineEdit_ClientPort->text().toInt()<65536 && \
+       ui->lineEdit_ClientPort->text().toInt()>0)
+    {
+        port = ui->lineEdit_ClientPort->text().toInt();
+    }
+    else
+    {
+         ui->statusBar->showMessage("端口错误",3000);
+        return;
+    }
 
-    QByteArray  data = QByteArray::fromHex(str.toLatin1());
+     QString str;
+     QByteArray  data;
+    if(BroadCastFlag)
+    {
+        BroadCastFlag = 0;
+        str ="68";
+        data = QByteArray::fromHex(str.toLatin1());
+        UDPClinet->writeDatagram(data, QHostAddress::Broadcast, BROADCAST_PORT);
 
-    UDPClinet->writeDatagram(data, (QHostAddress)ip, port);
+        qDebug()<<"Broadcast ip:"<<QHostAddress::Broadcast<<"ClientPort:"<<BROADCAST_PORT;
+        qDebug()<<"Broadcast Send Data:"<<str;
+    }
+    else
+    {
+        str = ui->lineEdit->text().toUpper();
+        data = QByteArray::fromHex(str.toLatin1());
+        UDPClinet->writeDatagram(data, (QHostAddress)ip, port);
 
-    qDebug()<<"ClientIPStr"<<ClientIPStr;
-    qDebug()<<"UDP Send Data:"<<str;
+        qDebug()<<"ClientIPStr:"<<ip<<"ClientPort:"<<port;
+
+        qDebug()<<"UDP Send Data:"<<str;
+    }
+
+
+
 }
 
 void MainWindow::on_pushButton_clicked()
@@ -1058,27 +1361,58 @@ void MainWindow::on_pushButton_heartbeat_clicked()
     EncodMsg(CMDID_SendPlusData);
 }
 
-
-
-void MainWindow::on_pushButton_GetSN_clicked()
+void MainWindow::on_pushButton_GetInfo_clicked()
 {
     if(ui->radioButton_Dev->isChecked())
         EncodMsg(CMDID_GetDevSN);
+    else if(ui->radioButton_VerSion->isChecked())
+        EncodMsg(CMDID_UpdateShake);
     else if(ui->radioButton_Zigbee->isChecked())
         EncodMsg(CMDID_GetZigbeeParam);
     else if(ui->radioButton_ServerIp->isChecked())
         EncodMsg(CMDID_GetLanIp);
-
-
+    else if(ui->radioButton_Server->isChecked())
+        EncodMsg(CMDID_GetServerIp);
+    else if(ui->radioButton_PlusTime->isChecked())
+        EncodMsg(CMDID_ReadBSCommParam);
 }
 
-
-void MainWindow::on_pushButton_SetSN_clicked()
+void MainWindow::on_pushButton_SetInfo_clicked()
 {
-     if(ui->radioButton_Dev->isChecked())
+    if(ui->radioButton_Dev->isChecked())
         EncodMsg(CMDID_SetDevSN);
-     else if(ui->radioButton_Zigbee->isChecked())
+    else if(ui->radioButton_Zigbee->isChecked())
         EncodMsg(CMDID_SetZigbeeParam);
-     else if(ui->radioButton_ServerIp->isChecked())
-         EncodMsg(CMDID_SetLanIp);
+    else if(ui->radioButton_ServerIp->isChecked())
+        EncodMsg(CMDID_SetLanIp);
+    else if(ui->radioButton_Server->isChecked())
+        EncodMsg(CMDID_SetServerIp);
+    else if(ui->radioButton_PlusTime->isChecked())
+        EncodMsg(CMDID_SetBSCommParam);
+}
+
+void MainWindow::on_pushButton_Broadcast_clicked()
+{
+    BroadCastFlag = 1;
+    ui->comboBox_Connetion->clear();
+    UDPSendData();
+}
+
+void MainWindow::on_comboBox_Connetion_currentIndexChanged(int index)
+{
+    QStringList info;
+    QString str = ui->comboBox_Connetion->currentText();
+    qDebug()<<"current str :"<<str;
+
+    if(!str.isEmpty())
+    {
+        info = str.split(QRegExp("[: ]"));
+
+//        for(quint8 i =0;i<info.length();i++)
+//             qDebug()<<i<<info.at(i);
+
+        ui->lineEdit_DevIPAddr->setText(info.at(0));
+        ui->lineEdit_ClientPort->setText(info.at(1));
+        ui->lineEdit_RedDevSN->setText(info.at(2));
+    }
 }
